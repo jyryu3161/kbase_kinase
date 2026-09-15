@@ -261,6 +261,8 @@ source_snapshots: [SNAP-klifs-2026-09-15, SNAP-kinhub-2026-09-15, ...]
 
 범용 85-residue 매퍼를 직접 만들지 않는다. KLIFS 스냅샷에 있는 pocket 서열과 위치를 쓰고, 없으면 `unmapped`다.
 
+잔기 번호는 번호 체계를 필드명에 담는다(`uniprot_resnum`, `pdb_resnum`). ABL1 gatekeeper는 PDB에 따라 315(ABL1a)와 334(ABL1b)로 갈리므로, 체계 없는 번호 하나로는 위치가 특정되지 않는다.
+
 ### Structure
 
 ```yaml
@@ -297,6 +299,10 @@ sifts_mapping: [{chain: A, pdb_resnum: 790, uniprot_resnum: 790, insertion_code:
 KLIFS 서브포켓 필드는 boolean이며 의미는 리간드 접촉이다. 포켓의 존재나 열림이 아니다. 이 사실을 `semantics` 필드에 박아 소비자가 오해하지 않게 한다.
 
 Kincore의 `None`은 결측을 뜻하는 정상 값이다. null로 뭉개지 않는다.
+
+구조 상태는 이 계층에서만 온다. LLM이 그림 캡션에서 DFG/αC 상태나 결합 모드를 읽어 채우지 않는다.
+
+Kincore의 αC 분류가 KLIFS `aC_helix`와 같은 의미인지 아직 확인하지 않았다. 확인 전까지 αC의 `conflict`는 판정 기준 차이일 수 있다.
 
 ### Mutation
 
@@ -380,6 +386,8 @@ parser_warnings: [orphan_subpanel]
 
 `interactions_get_IFP`, `interactions_get_types`, `interactions_match_residues` 엔드포인트가 있어 kinase에 한해서는 별도 상호작용 지문 도구가 필요 없다. EGFR 하나가 구조 565건이므로 kinase 단위로 페이지를 나눠 받고 실패 ID를 기록한다.
 
+신선도가 낮다. 4개 kinase 표본(EGFR·ABL1·CDK2·BTK)에서 2025년 이후 구조 167건 중 0건을 담고 있었다. 2023–2024년은 잘 덮여 있다. 최신 구조의 상태는 Kincore만 주므로 `agreement: one_source`가 된다.
+
 **Kincore** (`dunbrack.fccc.edu/kincore`) — 2026-05-25 갱신. Spatial label(`DFGin`/`DFGinter`/`DFGout`), Dihedral label(`BLAminus`, `BLAplus`, `ABAminus`, `BLBminus`, `BLBplus`, `BLBtrans`, `BABtrans`, `BBAminus`), Chelix-Saltbridge, HRD, ActLoopCT, 종합 Activity label. 원자나 잔기 결측 시 `None`. standalone 구현은 `DunbrackLab/Kincore-standalone2`.
 
 **UniProt REST**, **PDBe SIFTS**(`ebi.ac.uk/pdbe/api/mappings/uniprot/<id>`), **InterPro/Pfam PF00069**, **KinHub**, **ChEMBL API** 모두 응답한다.
@@ -441,7 +449,7 @@ Biopython `Entrez`는 검색, 레코드 조회, PMID에서 PMC 연결 확인에�
 6. kb build 로 dist/ 와 wiki/ 갱신
 ```
 
-같은 PDF를 다시 넣으면 sha256이 같으므로 캐시를 쓰고 중복 레코드를 만들지 않는다.
+같은 PDF를 다시 넣으면 sha256이 같으므로 캐시를 쓰고 중복 레코드를 만들지 않는다. PDF 한 편을 추가해도 전체 재처리가 일어나지 않는다.
 
 캐시 키 구성: PDF sha256, 파서 이름·버전·백엔드·옵션, 프롬프트 버전, 모델·공급자, 스키마 버전, 어휘 버전, ref 스냅샷 ID. MinerU는 출력에 `_version_name`만 남기고 설정 지문이 없으므로 이 키를 직접 만든다.
 

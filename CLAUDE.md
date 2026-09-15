@@ -12,6 +12,7 @@ kinase 구조 기반 lead optimization 지식베이스. 최종 소비자는 prot
 - MinerU 3.4.5 (주 PDF 파서), Docling (교차검증 파서)
 - OpenRouter `deepseek/deepseek-v4.1-flash` (추출 LLM, structured outputs 강제)
 - pytest + tdd-guard, ruff
+- conda 전용 패키지에 의존하지 않는다 (opencadd, KiSSim 등은 PyPI에 없다)
 
 ## 아키텍처 규칙
 
@@ -43,6 +44,11 @@ kinase 구조 기반 lead optimization 지식베이스. 최종 소비자는 prot
 - 외부 조회 실패는 `lookup_failed`로, 실제 부재는 `not_found`로 기록한다. 장애 때문에 기존 링크를 지우지 않는다.
 - 레코드 ID(`MOVE-0001`)는 최초 생성 시 고정한다. `content_hash`는 변경 감지 전용이며 ID 역할을 하지 않는다.
 - LLM 출력은 반드시 스키마 검증을 통과한 뒤 저장한다. 형식 이탈 시 보정 요청은 1회만.
+- LLM에 DFG/αC 상태, 결합 모드(type I/II), 잔기 번호를 배정시키지 않는다. 연결된 structure 레코드에서 오거나 `unknown`이다. 캡션으로는 추론할 수 없는데 LLM은 자신 있게 지어낸다.
+- 잔기 번호에는 번호 체계를 항상 붙인다(`uniprot_resnum`, `pdb_resnum`). ABL1 gatekeeper는 PDB에 따라 315(ABL1a)와 334(ABL1b)로 갈린다.
+- observation, effect, tradeoff는 각각 자기 evidence를 갖는다. 그림 하나의 접촉 설명이 효능 수치까지 뒷받침한다고 취급하지 않는다.
+- 표 각주를 버리지 않는다. assay 조건과 부등호 의미가 거기 있다.
+- 비밀값을 오류 메시지, 로그, assert 메시지에 넣지 않는다. 키 이름과 오류 종류만 출력한다. `.env`는 커밋하지 않고, 새 설정은 `.env.example`에 키 이름만 추가한다.
 - 캐시 키에 PDF sha256, 파서 이름·버전·백엔드·옵션, 프롬프트 버전, 모델·공급자, 스키마 버전, 어휘 버전, ref 스냅샷 ID를 모두 넣는다. MinerU는 설정 지문을 제공하지 않으므로 직접 만든다.
 
 ## 개발 프로세스
