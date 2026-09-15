@@ -101,6 +101,8 @@ OpenRouter `deepseek/deepseek-v4.1-flash`에 structured outputs를 강제해 Mov
 
 `moves.jsonl`, `moves_flagged.jsonl`, `structures.jsonl`, `references.jsonl`, `mutations.jsonl`, `figures.jsonl`, `tactics.jsonl`, `manifest.json`, `CONTRACT.md`를 생성해 저장소에 커밋한다.
 
+소비자 안내 원본 `docs/consumer/AGENTS.md`를 `dist/AGENTS.md`로 바이트 그대로 복사하고 `manifest.json`에 해시를 기록한다. 원본을 고치고 빌드하지 않으면 `kb build --check`의 재빌드 diff가 불일치로 실패한다.
+
 빌드는 네트워크를 쓰지 않는다. 임시 디렉터리에서 만들고 원자적으로 교체한다. 실패하면 마지막 정상 dist를 유지한다.
 
 ### F9. reader

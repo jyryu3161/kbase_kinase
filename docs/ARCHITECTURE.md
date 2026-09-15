@@ -140,7 +140,7 @@ reference  structures  mutations              │
                        │
         dist/ (moves, moves_flagged, structures,
                mutations, references, figures,
-               tactics, manifest, CONTRACT)
+               tactics, manifest, CONTRACT, AGENTS)
                        │
             ┌──────────┴──────────┐
             ▼                     ▼
@@ -480,6 +480,10 @@ KLIFS 필드와 같은 모양으로 맞춰 소비자의 변환 부담을 없앤�
 ```
 
 `unknown`과 `null`을 구분한다. 모르는 값끼리 일치해도 유사도 가점을 주지 않는다.
+
+`occupied_subpockets`는 KLIFS 의미(리간드 접촉)를 따른다. `accessible_subpockets`는 KLIFS에 없는 소비자 판단으로, 아직 접촉하지 않았지만 현재 리간드가 성장해 들어갈 수 있다고 본 서브포켓이다. KB는 이 값을 만들지 않고 structure의 `not_occupied`를 accessible로 해석하지 않는다. 성장 방향 힌트로만 쓴다.
+
+`contacts`의 잔기 번호는 `uniprot_resnum`이다. PDB 번호로 분석한 소비자는 `kb.structure()`의 `sifts_mapping`으로 변환한다.
 
 ### 출력: 매칭 이유 3범주
 
