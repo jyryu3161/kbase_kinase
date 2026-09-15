@@ -76,6 +76,18 @@ Subpocket names are KLIFS names and their semantics are **ligand contact**, not
 pocket existence and not pocket openness. A subpocket in `occupied_subpockets`
 means a ligand atom contacts it.
 
+`accessible_subpockets` is different. It is your own judgment of subpockets that
+no ligand atom contacts yet but that the current ligand could grow into. KLIFS
+has no such field and this knowledge base never produces one: structure records
+carry only `occupied` and `not_occupied`, and `not_occupied` does not mean
+accessible. Treat it as a hint about growth direction, not as a KLIFS
+observation.
+
+Residue numbers in `contacts` are UniProt numbers (`uniprot_resnum`). PDB
+numbering can differ for the same residue: the ABL1 gatekeeper is 315 in some
+entries (ABL1a numbering) and 334 in others (ABL1b). If your analysis works in
+PDB numbering, convert through the `sifts_mapping` that `kb.structure()` returns.
+
 Omit what you do not know. Do not guess. `unknown` and `null` are distinct from
 `false`, and matching two unknowns against each other earns no similarity
 credit.
@@ -104,6 +116,15 @@ kb.mutation("EGFR", "T790M")          # resistance mutation record
 
 Do not collapse these. A precedent from ABL1 at the same KLIFS position as your
 EGFR site is a lead for a hypothesis, not evidence that it will work.
+
+By default `find` searches only `moves.jsonl`, the records that passed every
+check. Flagged records come back only when you ask for them explicitly, so an
+empty default result does not mean no flagged precedent exists.
+
+An overly broad query returns `total`, `truncated`, and a hint about which
+filter to add. That is a normal result, not an error. An unknown id or an
+incompatible schema raises an explicit error, which is different from a search
+that matched zero records.
 
 ## 4. Record types
 
@@ -170,17 +191,33 @@ context, or report the disagreement to the user. Do not silently pick one.
 Kincore emits `None` when atoms or residues are missing. That is a real value
 meaning "not assignable," not a null.
 
+Two known causes of `conflict` and `one_source` say nothing about the structure
+itself:
+
+- Whether Kincore's αC classification means the same thing as KLIFS `aC_helix`
+  has not been verified. Until it is, an αC `conflict` may reflect different
+  criteria rather than a real disagreement about the structure.
+- KLIFS lags behind the PDB. In a four-kinase sample (EGFR, ABL1, CDK2, BTK) it
+  held none of the 167 structures released since 2025, so recent structures are
+  usually `one_source` (Kincore only).
+
 ## 7. Reading absence correctly
 
-Three different kinds of nothing, and they are not interchangeable:
+Several different kinds of nothing, and they are not interchangeable:
 
 | Value | Meaning |
 |---|---|
+| `unknown` | The value could not be determined. A Move with no linked structure record has DFG and αC state `unknown` |
+| `null` | No value. The neighbouring field says why: `comparability_reason` for `fold_change`; `smiles_from: null` means the paper gave none |
+| Kincore `None` | Kincore could not assign a label because atoms or residues are missing (section 6) |
 | `unmapped` | Position mapping was ambiguous or out of supported range |
 | `not_observed` | The structure does not resolve this region |
 | `not_applicable` | This kinase genuinely has no such feature |
 | `lookup_failed` | An external service was down when we checked |
 | `not_found` | We checked successfully and it is absent |
+
+`chembl_crosscheck: not_found` is common and is not a failure. ChEMBL coverage
+is partial, so a missing activity does not mean the extracted number is wrong.
 
 In particular, `mutations.jsonl` records with an empty `overcome_by` list mean
 "no precedent in this knowledge base," **not** "no known solution exists."

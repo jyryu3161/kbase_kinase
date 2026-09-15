@@ -56,7 +56,7 @@ kinase 구조 기반 lead optimization 지식베이스. 최종 소비자는 prot
 ## 개발 프로세스
 
 - **CRITICAL: 새 기능 구현 시 반드시 테스트를 먼저 작성하고, 테스트가 통과하는 구현을 작성할 것 (TDD).** 실패하는 테스트를 먼저 실행해 확인한 뒤 구현한다.
-- Codex hook(`.codex/hooks.json`)이 `rm -rf`, `git push --force`, `git reset --hard`, `DROP TABLE`을 차단하고, 턴 종료 시 `ruff check .`와 `pytest`를 돌린다. 실패 보고를 받으면 고친 뒤 끝낸다. hook을 약화시키는 수정을 하지 않는다.
+- Codex hook(`.codex/hooks.json`)이 `rm -rf`, `git push --force`, `git reset --hard`, `DROP TABLE`을 차단하고, 턴 종료 시 `ruff check .`와 `pytest`를 돌린다. Claude Code도 `.claude/settings.json`에서 같은 스크립트를 쓴다. 실패 보고를 받으면 고친 뒤 끝낸다. hook을 약화시키는 수정을 하지 않는다.
 - 커밋 메시지는 conventional commits 형식을 따를 것 (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`)
 - 구현은 `phases/` harness로 진행한다. `python3 scripts/execute.py <task-name>`이 step마다 `codex exec`를 실행한다.
 - 하나의 step에서 하나의 레이어만 다룬다. 엔진과 도메인을 같은 step에서 수정하지 않는다.
