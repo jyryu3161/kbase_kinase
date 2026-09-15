@@ -10,7 +10,7 @@
 4. **검증할 수 없는 주장을 스키마에 담지 않는다.** 필드가 있으면 언젠가 채워지고, 채워진 값은 근거 없이 신뢰를 얻는다.
 5. **속도보다 재현성.** 같은 입력으로 같은 결과가 나오지 않으면 무엇이 개선인지 알 수 없다.
 
-결정 26건을 아래에 적는다. 인터뷰 7라운드로 확정했다.
+결정 27건을 아래에 적는다. 인터뷰 7라운드로 확정했다. ADR-027은 이후 추가했다.
 
 ---
 
@@ -29,7 +29,7 @@
 ### ADR-003: 커버리지 2계층
 **결정**: reference 계층은 전체 kinome을 외부 스냅샷에서 기계적으로 채운다. knowledge 계층(Move, Mutation, Figure)은 문헌이 있는 곳에만 생긴다.
 **이유**: 518개 kinase를 Move로 덮는 것은 불가능하지만, 구조 anatomy는 외부 DB에서 전체를 받을 수 있다. 소비자 agent가 처음 보는 kinase를 만나도 좌표는 잡히고, 전략은 유사 위치의 Move에서 빌려온다.
-**트레이드오프**: 두 계층의 신뢰 성격이 다른데 같은 저장소에 있다. 소비자가 reference 커버리지를 knowledge 커버리지로 오해할 위험이 있다. `AGENTS.md`에 경고를 박아 완화한다.
+**트레이드오프**: 두 계층의 신뢰 성격이 다른데 같은 저장소에 있다. 소비자가 reference 커버리지를 knowledge 커버리지로 오해할 위험이 있다. 소비자 안내(`docs/consumer/AGENTS.md`)에 경고를 박아 완화한다.
 
 ### ADR-024: 구조 상태는 별도 structures 계층
 **결정**: DFG와 αC 상태를 `pdb_id + chain + ligand` 단위 레코드에 담는다. kinase별 reference에는 위치 좌표만 두고 상태는 넣지 않는다.
@@ -118,8 +118,13 @@
 **이유**: 기존 harness는 테스트 51개를 갖춘 동작하는 자산이다. 버릴 이유가 없다. 현재 Stop 훅은 `npm run lint && npm run build && npm run test`를 돌리는데 `package.json`이 없어 매번 실패한다. 무검수 체제에서 자동 검사가 유일한 안전망이므로 그걸 돌리는 습관을 없애면 안 된다. UI_GUIDE는 UI가 없는 프로젝트와 무관하다.
 **트레이드오프**: 매 턴 검사로 느려진다. 레코드가 쌓이면 `pytest`에 스키마 검증 시간이 붙어 더 느려질 수 있다. 그때는 훅을 빠른 하위집합으로 좁힌다.
 
+### ADR-027: 구현은 Codex, 개발 규칙 정본은 루트 AGENTS.md
+**결정**: `scripts/execute.py`가 step마다 `codex exec`를 실행한다. 루트 `AGENTS.md`를 개발 규칙의 정본으로 두고 `CLAUDE.md`는 `@AGENTS.md`로 가져온다. 소비자 agent용 안내는 `docs/consumer/AGENTS.md`로 옮기고 빌드가 `dist/AGENTS.md`로 복사한다. Claude 훅에 대응하는 Codex hook을 `.codex/hooks.json`에 둔다. PreToolUse는 위험 명령을 차단하고, Stop은 ADR-014의 `ruff check .`와 `pytest`를 돌려 실패하면 한 번 더 작업시킨다.
+**이유**: Codex는 루트 `AGENTS.md`를 개발 지침으로 자동 로드한다. 소비자 안내를 그 자리에 두면 구현 agent가 역할을 혼동한다. 규칙 파일을 둘로 복사하면 어긋난다. 소비자는 `dist/`를 받으므로 안내도 거기 있으면 된다. 하위 폴더에 두면 execute.py의 `docs/*.md` 주입에도 섞이지 않는다.
+**트레이드오프**: `codex exec`에서 프로젝트 hook을 실행하려면 `--dangerously-bypass-hook-trust`가 필요하다. step agent가 hook 파일을 고치면 다음 step은 검토 없이 바뀐 hook을 실행한다. 이미 샌드박스 없이 돌리므로 권한이 늘지는 않지만, 안전망을 약화시키는 변경을 자동으로 잡지 못한다. Stop hook은 루프를 막기 위해 한 턴에 한 번만 재작업을 강제한다. tdd-guard 같은 Claude Code 전용 장치는 Codex에 적용되지 않는다. `AGENTS.md`가 Codex 기본 로드 한도 32KiB를 넘으면 뒷부분이 잘린다.
+
 ### ADR-009: 레코드는 영어, 문서는 한국어
-**결정**: Move의 `observation`, `change`, `tradeoffs` 같은 자유 서술을 영어로 쓴다. `README`, `CLAUDE.md`, `docs/`는 한국어로 쓴다. `AGENTS.md`와 `dist/CONTRACT.md`는 영어다.
+**결정**: Move의 `observation`, `change`, `tradeoffs` 같은 자유 서술을 영어로 쓴다. `README`, `AGENTS.md`, `CLAUDE.md`, `docs/`는 한국어로 쓴다. 소비자 안내 `docs/consumer/AGENTS.md`와 `dist/CONTRACT.md`는 영어다.
 **이유**: 원문이 영어이므로 번역 손실과 용어 왜곡이 없다. 근거 구간(quote)과 서술의 언어가 일치해 `quote_in_source` 검사가 성립한다. 하류 agent가 쓰는 문헌·DB 어휘와 같은 공간에 있다.
 **트레이드오프**: 사람이 훑을 때 한 번 번역해야 한다. wiki가 영어라 소유자에게 덜 편하다.
 

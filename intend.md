@@ -119,9 +119,9 @@ gatekeeper 잔기 번호처럼 단순해 보이는 값도 소스마다 다를 �
 
 | 문서 | 내용 |
 |---|---|
-| `CLAUDE.md` | 이 저장소에서 작업할 때의 규칙 |
-| `AGENTS.md` | 이 지식을 소비하는 agent를 위한 안내 (영어) |
+| `AGENTS.md` | 이 저장소에서 작업할 때의 규칙 (`CLAUDE.md`가 import) |
+| `docs/consumer/AGENTS.md` | 이 지식을 소비하는 agent를 위한 안내 (영어) |
 | `docs/PRD.md` | 사용자, 기능 범위, 하지 않을 일 |
 | `docs/ARCHITECTURE.md` | 디렉터리 구조, 데이터 흐름, 스키마 |
-| `docs/ADR.md` | 설계 결정 26건과 각각의 트레이드오프 |
+| `docs/ADR.md` | 설계 결정 27건과 각각의 트레이드오프 |
 | `dist/CONTRACT.md` | 빌드가 생성. 소비 계약과 신뢰 한계 (영어) |
