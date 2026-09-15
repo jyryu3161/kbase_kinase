@@ -5,12 +5,14 @@
 ```
 kbase_kinase/
 ├── intend.md                  # 왜 만드는가
-├── CLAUDE.md                  # 작업 규칙
-├── AGENTS.md                  # 소비자 agent용 안내 (영어)
+├── AGENTS.md                  # 개발 규칙 정본 (Codex 자동 로드)
+├── CLAUDE.md                  # @AGENTS.md import
 ├── pyproject.toml
 ├── .env.example
+├── .codex/hooks.json          # Codex hook: 위험 명령 차단, 종료 시 ruff + pytest
 │
 ├── docs/{PRD,ARCHITECTURE,ADR}.md
+├── docs/consumer/AGENTS.md    # 소비자 agent용 안내 (영어). 빌드가 dist/로 복사
 │
 ├── src/
 │   ├── kbase/                 # 엔진. 도메인 단어를 모른다
@@ -66,6 +68,7 @@ kbase_kinase/
 │
 ├── dist/                      # 빌드 산출물 (커밋)
 │   ├── CONTRACT.md            # 빌드가 생성. 소비 계약의 정본
+│   ├── AGENTS.md              # docs/consumer/AGENTS.md 복사본
 │   ├── manifest.json
 │   ├── moves.jsonl
 │   ├── moves_flagged.jsonl

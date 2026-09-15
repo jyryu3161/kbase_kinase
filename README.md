@@ -39,7 +39,7 @@ reference는 처음 보는 kinase에도 구조 좌표를 준다. knowledge는 �
 
 ### 소비자 agent라면
 
-`AGENTS.md`를 읽어라. 질의 방법, 레코드 종류, 수치와 충돌과 부재를 읽는 방법, 그리고 신뢰 한계가 거기 있다.
+`docs/consumer/AGENTS.md`(빌드 후에는 `dist/AGENTS.md`)를 읽어라. 질의 방법, 레코드 종류, 수치와 충돌과 부재를 읽는 방법, 그리고 신뢰 한계가 거기 있다.
 
 ```python
 kb.find({
@@ -69,7 +69,7 @@ kb literature --plan    # 우선순위가 붙은 PMID 요청 목록 CSV
 
 ### 개발하려면
 
-`CLAUDE.md`의 CRITICAL 규칙을 먼저 읽어라. 특히 엔진이 도메인을 모른다는 규칙과 수치 처리 규칙은 위반하면 이 저장소의 존재 이유가 무너진다.
+`AGENTS.md`의 CRITICAL 규칙을 먼저 읽어라. 특히 엔진이 도메인을 모른다는 규칙과 수치 처리 규칙은 위반하면 이 저장소의 존재 이유가 무너진다.
 
 ```bash
 ruff check . && pytest
@@ -112,11 +112,11 @@ inbox/ work/        PDF와 파싱 중간물 (gitignore)
 | 문서 | 내용 |
 |---|---|
 | `intend.md` | 왜 만드는가, 무엇이 아닌가, 성공 판정 기준 |
-| `CLAUDE.md` | 이 저장소에서 작업할 때의 규칙 |
-| `AGENTS.md` | 소비자 agent용 안내 (영어) |
+| `AGENTS.md` | 이 저장소에서 작업할 때의 규칙 (Codex 자동 로드, `CLAUDE.md`가 import) |
+| `docs/consumer/AGENTS.md` | 소비자 agent용 안내 (영어) |
 | `docs/PRD.md` | 사용자, 기능 범위, 하지 않을 일 |
 | `docs/ARCHITECTURE.md` | 구조, 데이터 흐름, 스키마, 외부 소스 |
-| `docs/ADR.md` | 설계 결정 26건과 트레이드오프 |
+| `docs/ADR.md` | 설계 결정 27건과 트레이드오프 |
 | `dist/CONTRACT.md` | 빌드가 생성. 소비 계약의 정본 (영어) |
 
 ## 기술 스택
