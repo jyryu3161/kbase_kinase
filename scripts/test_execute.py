@@ -4,11 +4,8 @@ execute.py 리팩터링 안전망 테스트.
 """
 
 import json
-import os
-import subprocess
 import sys
-import textwrap
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
@@ -146,13 +143,28 @@ class TestJsonHelpers:
 # ---------------------------------------------------------------------------
 
 class TestLoadGuardrails:
-    def test_loads_claude_md_and_docs(self, executor, tmp_project):
+    def test_loads_docs(self, executor, tmp_project):
         with patch.object(ex, "ROOT", tmp_project):
             result = executor._load_guardrails()
-        assert "# Rules" in result
-        assert "rule one" in result
         assert "# Architecture" in result
         assert "# Guide" in result
+
+    def test_does_not_inject_root_instruction_files(self, executor, tmp_project):
+        # 루트 AGENTS.md는 Codex가 자동 로드한다. 프롬프트에 또 넣으면 중복이다.
+        (tmp_project / "AGENTS.md").write_text("# Agent rules")
+        with patch.object(ex, "ROOT", tmp_project):
+            result = executor._load_guardrails()
+        assert "rule one" not in result
+        assert "Agent rules" not in result
+
+    def test_excludes_docs_subdirectories(self, executor, tmp_project):
+        # docs/consumer/AGENTS.md는 소비자 agent용이라 개발 프롬프트에 섞지 않는다.
+        consumer = tmp_project / "docs" / "consumer"
+        consumer.mkdir()
+        (consumer / "AGENTS.md").write_text("# For consuming agents")
+        with patch.object(ex, "ROOT", tmp_project):
+            result = executor._load_guardrails()
+        assert "consuming agents" not in result
 
     def test_sections_separated_by_divider(self, executor, tmp_project):
         with patch.object(ex, "ROOT", tmp_project):
@@ -166,20 +178,12 @@ class TestLoadGuardrails:
         guide_pos = result.index("guide")
         assert arch_pos < guide_pos
 
-    def test_no_claude_md(self, executor, tmp_project):
-        (tmp_project / "CLAUDE.md").unlink()
-        with patch.object(ex, "ROOT", tmp_project):
-            result = executor._load_guardrails()
-        assert "CLAUDE.md" not in result
-        assert "Architecture" in result
-
     def test_no_docs_dir(self, executor, tmp_project):
         import shutil
         shutil.rmtree(tmp_project / "docs")
         with patch.object(ex, "ROOT", tmp_project):
             result = executor._load_guardrails()
-        assert "Rules" in result
-        assert "Architecture" not in result
+        assert result == ""
 
     def test_empty_project(self, tmp_path):
         with patch.object(ex, "ROOT", tmp_path):
@@ -420,32 +424,59 @@ class TestCommitStep:
 
 
 # ---------------------------------------------------------------------------
-# _invoke_claude (mocked)
+# _invoke_codex (mocked)
 # ---------------------------------------------------------------------------
 
-class TestInvokeClaude:
-    def test_invokes_claude_with_correct_args(self, executor):
-        mock_result = MagicMock(returncode=0, stdout='{"result": "ok"}', stderr="")
+class TestInvokeCodex:
+    def test_invokes_codex_with_correct_args(self, executor):
+        mock_result = MagicMock(returncode=0, stdout='{"type": "done"}', stderr="")
         step = {"step": 2, "name": "ui"}
         preamble = "PREAMBLE\n"
 
         with patch("subprocess.run", return_value=mock_result) as mock_run:
-            output = executor._invoke_claude(step, preamble)
+            executor._invoke_codex(step, preamble)
 
         cmd = mock_run.call_args[0][0]
-        assert cmd[0] == "claude"
-        assert "-p" in cmd
-        assert "--dangerously-skip-permissions" in cmd
-        assert "--output-format" in cmd
-        assert "PREAMBLE" in cmd[-1]
-        assert "UI를 구현하세요" in cmd[-1]
+        assert cmd[:2] == ["codex", "exec"]
+        assert "--dangerously-bypass-approvals-and-sandbox" in cmd
+        assert "--json" in cmd
+        # 프롬프트는 stdin으로 전달한다
+        assert cmd[-1] == "-"
+        prompt = mock_run.call_args[1]["input"]
+        assert "PREAMBLE" in prompt
+        assert "UI를 구현하세요" in prompt
+
+    def test_keeps_agents_md_autoload(self, executor):
+        # 루트 AGENTS.md가 Codex 개발 지침이다. 자동 로드를 끄면 안 된다.
+        mock_result = MagicMock(returncode=0, stdout="", stderr="")
+        step = {"step": 2, "name": "ui"}
+
+        with patch("subprocess.run", return_value=mock_result) as mock_run:
+            executor._invoke_codex(step, "preamble")
+
+        cmd = mock_run.call_args[0][0]
+        assert not any("project_doc" in arg for arg in cmd)
+
+    def test_runs_project_hooks(self, executor):
+        # 신뢰 등록이 없으면 codex exec는 .codex/hooks.json을 실행하지 않는다.
+        mock_result = MagicMock(returncode=0, stdout="", stderr="")
+        step = {"step": 2, "name": "ui"}
+
+        with patch("subprocess.run", return_value=mock_result) as mock_run:
+            executor._invoke_codex(step, "preamble")
+
+        cmd = mock_run.call_args[0][0]
+        assert "--dangerously-bypass-hook-trust" in cmd
+        # 사용자 config에서 hooks 기능이 꺼져 있어도 hook이 돌도록 강제한다.
+        i = cmd.index("--enable")
+        assert cmd[i + 1] == "hooks"
 
     def test_saves_output_json(self, executor):
         mock_result = MagicMock(returncode=0, stdout='{"ok": true}', stderr="")
         step = {"step": 2, "name": "ui"}
 
         with patch("subprocess.run", return_value=mock_result):
-            executor._invoke_claude(step, "preamble")
+            executor._invoke_codex(step, "preamble")
 
         output_file = executor._phase_dir / "step2-output.json"
         assert output_file.exists()
@@ -457,7 +488,7 @@ class TestInvokeClaude:
     def test_nonexistent_step_file_exits(self, executor):
         step = {"step": 99, "name": "nonexistent"}
         with pytest.raises(SystemExit) as exc_info:
-            executor._invoke_claude(step, "preamble")
+            executor._invoke_codex(step, "preamble")
         assert exc_info.value.code == 1
 
     def test_timeout_is_1800(self, executor):
@@ -465,7 +496,7 @@ class TestInvokeClaude:
         step = {"step": 2, "name": "ui"}
 
         with patch("subprocess.run", return_value=mock_result) as mock_run:
-            executor._invoke_claude(step, "preamble")
+            executor._invoke_codex(step, "preamble")
 
         assert mock_run.call_args[1]["timeout"] == 1800
 

@@ -9,7 +9,6 @@ Usage:
 import argparse
 import contextlib
 import json
-import os
 import subprocess
 import sys
 import threading
@@ -115,7 +114,7 @@ class StepExecutor:
 
         r = self._run_git("rev-parse", "--abbrev-ref", "HEAD")
         if r.returncode != 0:
-            print(f"  ERROR: git을 사용할 수 없거나 git repo가 아닙니다.")
+            print("  ERROR: git을 사용할 수 없거나 git repo가 아닙니다.")
             print(f"  {r.stderr.strip()}")
             sys.exit(1)
 
@@ -128,7 +127,7 @@ class StepExecutor:
         if r.returncode != 0:
             print(f"  ERROR: 브랜치 '{branch}' checkout 실패.")
             print(f"  {r.stderr.strip()}")
-            print(f"  Hint: 변경사항을 stash하거나 commit한 후 다시 시도하세요.")
+            print("  Hint: 변경사항을 stash하거나 commit한 후 다시 시도하세요.")
             sys.exit(1)
 
         print(f"  Branch: {branch}")
@@ -175,10 +174,8 @@ class StepExecutor:
     # --- guardrails & context ---
 
     def _load_guardrails(self) -> str:
+        # 프로젝트 규칙(루트 AGENTS.md)은 Codex가 자동 로드하므로 docs/*.md만 주입한다.
         sections = []
-        claude_md = ROOT / "CLAUDE.md"
-        if claude_md.exists():
-            sections.append(f"## 프로젝트 규칙 (CLAUDE.md)\n\n{claude_md.read_text()}")
         docs_dir = ROOT / "docs"
         if docs_dir.is_dir():
             for doc in sorted(docs_dir.glob("*.md")):
@@ -224,9 +221,9 @@ class StepExecutor:
             f"   {commit_example}\n\n---\n\n"
         )
 
-    # --- Claude 호출 ---
+    # --- Codex 호출 ---
 
-    def _invoke_claude(self, step: dict, preamble: str) -> dict:
+    def _invoke_codex(self, step: dict, preamble: str) -> dict:
         step_num, step_name = step["step"], step["name"]
         step_file = self._phase_dir / f"step{step_num}.md"
 
@@ -235,13 +232,17 @@ class StepExecutor:
             sys.exit(1)
 
         prompt = preamble + step_file.read_text()
+        # 프롬프트는 argv 길이 제한을 피하려고 stdin("-")으로 넘긴다.
+        # hook trust 우회가 없으면 exec 모드에서 .codex/hooks.json이 실행되지 않는다.
+        # --enable hooks는 사용자 config에서 기능이 꺼져 있어도 hook을 켠다.
         result = subprocess.run(
-            ["claude", "-p", "--dangerously-skip-permissions", "--output-format", "json", prompt],
-            cwd=self._root, capture_output=True, text=True, timeout=1800,
+            ["codex", "exec", "--dangerously-bypass-approvals-and-sandbox",
+             "--dangerously-bypass-hook-trust", "--enable", "hooks", "--json", "-"],
+            cwd=self._root, input=prompt, capture_output=True, text=True, timeout=1800,
         )
 
         if result.returncode != 0:
-            print(f"\n  WARN: Claude가 비정상 종료됨 (code {result.returncode})")
+            print(f"\n  WARN: Codex가 비정상 종료됨 (code {result.returncode})")
             if result.stderr:
                 print(f"  stderr: {result.stderr[:500]}")
 
@@ -260,10 +261,10 @@ class StepExecutor:
 
     def _print_header(self):
         print(f"\n{'='*60}")
-        print(f"  Harness Step Executor")
+        print("  Harness Step Executor")
         print(f"  Phase: {self._phase_name} | Steps: {self._total}")
         if self._auto_push:
-            print(f"  Auto-push: enabled")
+            print("  Auto-push: enabled")
         print(f"{'='*60}")
 
     def _check_blockers(self):
@@ -272,12 +273,12 @@ class StepExecutor:
             if s["status"] == "error":
                 print(f"\n  ✗ Step {s['step']} ({s['name']}) failed.")
                 print(f"  Error: {s.get('error_message', 'unknown')}")
-                print(f"  Fix and reset status to 'pending' to retry.")
+                print("  Fix and reset status to 'pending' to retry.")
                 sys.exit(1)
             if s["status"] == "blocked":
                 print(f"\n  ⏸ Step {s['step']} ({s['name']}) blocked.")
                 print(f"  Reason: {s.get('blocked_reason', 'unknown')}")
-                print(f"  Resolve and reset status to 'pending' to retry.")
+                print("  Resolve and reset status to 'pending' to retry.")
                 sys.exit(2)
             if s["status"] != "pending":
                 break
@@ -306,7 +307,7 @@ class StepExecutor:
                 tag += f" [retry {attempt}/{self.MAX_RETRIES}]"
 
             with progress_indicator(tag) as pi:
-                self._invoke_claude(step, preamble)
+                self._invoke_codex(step, preamble)
                 elapsed = int(pi.elapsed)
 
             index = self._read_json(self._index_file)
